@@ -285,9 +285,28 @@ static void readstr(char *s, size_t size)
 	}
 }
 
+void test_hyperram()
+{
+	volatile uint32_t *ram = (volatile uint32_t *)0x20000000U;
+	srand(0);
+	for (int i = 0; i < 100; i++)
+		ram[i] = rand();
+	srand(0);
+	for (int i = 0; i < 100; i++) {
+		unsigned expected = rand();
+		if (ram[i] != expected) printf("%d %08x!=%08x\n", i, ram[i], expected);
+		// else printf("%d ok\n", i);
+	}
+}
+
 int main(void)
 {
 	char buffer[64];
+
+	volatile uint32_t *const oe = (volatile uint32_t *)0x10008004U;
+	volatile uint32_t *const dout = (volatile uint32_t *)0x10008000U;
+	*oe = 0x0F;
+	*dout = 0x05;
 
 	irq_setmask(0);
 	irq_setie(1);
@@ -298,13 +317,19 @@ int main(void)
 	     "(c) Copyright 2007-2020 M-Labs Limited\n"
 	     "(c) Copyright 2021 LambdaConcept\n"
 	     "Built "__DATE__" "__TIME__"\n");
-	crcbios();
+//	crcbios();
 
 #if CONFIG_WITH_SDRAM
 	if (!sdram_init()) {
 		printf("Memory initialization failed\n");
 	}
 #endif
+
+	*dout = 0x01;
+
+	test_hyperram();
+
+	*dout = 0x0A;
 
 	while (1) {
 		putsnonl("\e[1mBIOS>\e[0m ");
